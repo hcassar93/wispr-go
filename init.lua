@@ -16,7 +16,51 @@ local selectedPromptIndex = nil  -- Track which prompt is selected
 local prompts = {}  -- Prompts loaded from JSON file
 
 -- OpenAI API Configuration
-local OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or "YOUR_API_KEY_HERE"  -- Load from environment variable
+-- Load API key from .env file in the project directory
+local function getApiKey()
+    -- Get the directory where this script is located
+    local scriptPath = debug.getinfo(1, "S").source:sub(2)  -- Remove the '@' prefix
+    local scriptDir = scriptPath:match("(.*/)")
+    local envFile = scriptDir .. ".env"
+    
+    local file = io.open(envFile, "r")
+    if file then
+        for line in file:lines() do
+            -- Look for OPENAI_API_KEY=value pattern
+            local key = line:match("^OPENAI_API_KEY=(.+)$")
+            if key and key ~= "" and key ~= "your_openai_api_key_here" then
+                file:close()
+                return key:gsub("%s+", "") -- Remove any whitespace
+            end
+        end
+        file:close()
+    end
+    
+    return "YOUR_API_KEY_HERE"
+end
+
+local OPENAI_API_KEY = getApiKey()
+
+-- Debug: Print the API key status at startup
+print("=== API KEY DEBUG ===")
+local scriptPath = debug.getinfo(1, "S").source:sub(2)
+local scriptDir = scriptPath:match("(.*/)")
+local envFile = scriptDir .. ".env"
+print("Looking for .env file at:", envFile)
+
+local envFileHandle = io.open(envFile, "r")
+if envFileHandle then
+    print(".env file found")
+    envFileHandle:close()
+else
+    print(".env file not found - please create one with your OpenAI API key")
+end
+
+print("Final OPENAI_API_KEY value:", OPENAI_API_KEY == "YOUR_API_KEY_HERE" and "NOT CONFIGURED" or "CONFIGURED")
+if OPENAI_API_KEY ~= "YOUR_API_KEY_HERE" then
+    print("Using API key starting with:", string.sub(OPENAI_API_KEY, 1, 10) .. "...")
+end
+print("=====================")
 
 -- Transcribe audio file using OpenAI Whisper API
 function audioRecorder.transcribeAudio(audioFilePath)

@@ -1,5 +1,7 @@
 # Audio Recorder with AI Transcription
 
+> Built by GitHub Copilot
+
 A Hammerspoon-based audio recording tool that automatically transcribes recordings using OpenAI's Whisper API and processes them with configurable AI prompts.
 
 ## Features
@@ -65,31 +67,22 @@ dofile("/path/to/your/cloned/wispr-go/init.lua")
 
 1. Get an OpenAI API key from [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 
-2. Set the API key as an environment variable using Terminal:
+2. Add your API key to the `.env` file in the project directory:
 
-   **For permanent setup (recommended):**
-   ```bash
-   echo 'export OPENAI_API_KEY="sk-your-actual-api-key-here"' >> ~/.zshrc
-   source ~/.zshrc
+   Open the `.env` file in your cloned repository folder and replace the placeholder with your actual API key:
+
    ```
-   
-   *Note: If you're using bash instead of zsh, replace `~/.zshrc` with `~/.bash_profile`*
-
-   **For temporary setup (current session only):**
-   ```bash
-   export OPENAI_API_KEY="sk-your-actual-api-key-here"
+   OPENAI_API_KEY=sk-your-actual-api-key-here
    ```
 
-3. Verify the environment variable is set:
+   *Note: Replace `sk-your-actual-api-key-here` with your actual OpenAI API key from step 1.*
+
+3. Verify setup by checking the `.env` file:
    ```bash
-   echo $OPENAI_API_KEY
+   cat .env
    ```
 
-4. **Important**: After setting the environment variable, restart Hammerspoon for it to pick up the new environment variable:
-   - Menu bar → Hammerspoon → Quit Hammerspoon
-   - Open Hammerspoon again
-
-*Note: Replace `sk-your-actual-api-key-here` with your actual OpenAI API key from step 1.*
+4. **Test in Hammerspoon**: After setup, reload Hammerspoon config and check the console (menu bar → Hammerspoon → Console) for debug messages.
 
 ### Step 6: Set Up Prompts (Optional)
 
@@ -154,15 +147,28 @@ If not found, reinstall with Homebrew:
 brew install ffmpeg
 ```
 
-### "Transcription failed" Error
+### "Transcription failed" or "OpenAI API key not configured" Error
 
-1. Check that your OpenAI API key environment variable is correctly set:
+1. Check that your `.env` file contains your OpenAI API key:
    ```bash
-   echo $OPENAI_API_KEY
+   cat .env
    ```
-2. Ensure you have sufficient credits in your OpenAI account
-3. Check your internet connection
-4. If you recently set the environment variable, restart Hammerspoon
+
+2. Ensure the `.env` file is in the same directory as `init.lua`
+
+3. Verify your API key format in the `.env` file:
+   ```
+   OPENAI_API_KEY=sk-proj-your-actual-key-here
+   ```
+   (No quotes needed around the key)
+
+4. Check Hammerspoon Console for debug messages:
+   - Menu bar → Hammerspoon → Console
+   - Look for "API KEY DEBUG" messages
+
+5. Ensure you have sufficient credits in your OpenAI account
+
+6. Check your internet connection
 
 ### Prompts Not Loading
 
@@ -184,7 +190,7 @@ If Hammerspoon doesn't load the script:
 - Homebrew
 - Hammerspoon
 - FFmpeg
-- OpenAI API key (set as environment variable `OPENAI_API_KEY`)
+- OpenAI API key (configured in `.env` file)
 - Internet connection (for API calls)
 
 ## Privacy Note
