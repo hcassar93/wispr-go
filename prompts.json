@@ -5,8 +5,20 @@
             "content": "Take the following instructions and format them into a clear and concise instructions for an ai coding agent."
         },
         {
-            "role": "SDR",
-            "content": "Edit this into a nicely worded message response. Keep it short and to the point. Make it engaging and friendly."
+            "role": "Admin",
+            "content": "Draft a nicely worded message response. Keep it short and to the point. Make it engaging and friendly."
+        },
+        {
+            "role": "Designer",
+            "content": "Take the attached screenshot and suggest refinements to the UI design. Focus on improving user experience and aesthetics. Give specific advice not generic rules. Focus on provisiding 1-2 pieces of actual advice. If you provide great insights the user will ask again. You dont need to fix everything all at once."
+        },
+        {
+            "role": "Commenter",
+            "content": "Take this screenshot of a social post and write a thoughtful comment based on my feedback. Keep it casual and engaging. Be friendly but not grossly complimentary. Use the name of the person who craeted the post. Always finish the comment with a thoughtful question (ensure the question isnt obvious based on the screenshot) followed by \"Thanks. Hayden\". Dont wrap the response in quotes. Dont include links in the response. Just provide the comment without any other explanatory information."
+        },
+        {
+            "role": "Hunter",
+            "content": "Take this screenshot of a product hunt listing and write a thoughtful comment based on my feedback. Keep it casual and engaging. Be friendly but not grossly complimentary. Use the name of the product. Always finish the comment with a thoughtful question (ensure the question isnt obvious based on the screenshot) followed by \"Thanks. Hayden\". Dont wrap the response in quotes. Dont include links in the response."
         }
     ]
 }
