@@ -1,5 +1,8 @@
 # Audio Recorder with AI Transcription
 
+https://www.loom.com/share/df6b56a88eed42e1add615915aec72bb
+
+
 > Built by GitHub Copilot
 
 A Hammerspoon-based audio recording tool that automatically transcribes recordings using OpenAI's Whisper API and processes them with configurable AI prompts.

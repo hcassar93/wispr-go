@@ -2,11 +2,11 @@
     "prompts": [
         {
             "role": "Engineer",
-            "content": "You are an expert in software development. Take the following instructions from your manager and format them into a clear and concise instructions for an ai coding agent. Ensure that all necessary details are included. Ensure the instructions dont repeat themselves. Synthesise a best practice prompt for an ai agent."
+            "content": "Take the following instructions and format them into a clear and concise instructions for an ai coding agent."
         },
         {
             "role": "SDR",
-            "content": "You are an outbound sales development representative. Take the following instructions and return to me a clear and concise message. Keep it short and to the point. A Casual and fun tone is perfect for me. No emojis though."
+            "content": "Edit this into a nicely worded message response. Keep it short and to the point. Make it engaging and friendly."
         }
     ]
 }

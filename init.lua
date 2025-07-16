@@ -953,6 +953,10 @@ function audioRecorder.updateMenubar()
         audioRecorder.updateMenubar()
         hs.alert.show("Prompts reloaded", 1)
     end})
+    table.insert(mainMenu, {title = "-"})
+    table.insert(mainMenu, {title = "🗑️ Delete All Sessions", fn = function()
+        audioRecorder.deleteAllSessions()
+    end})
     
     menubar:setMenu(mainMenu)
 end
@@ -971,3 +975,36 @@ hs.alert.show("Audio Recorder loaded! Press Cmd+Option+R to toggle recording", 2
 print("Hammerspoon Audio Recorder initialized")
 print("Recordings will be saved to: " .. recordingDirectory)
 print("Keyboard shortcut: Cmd+Option+R")
+
+-- Delete all recording sessions with confirmation
+function audioRecorder.deleteAllSessions()
+    -- Show confirmation dialog
+    local buttonPressed = hs.dialog.blockAlert(
+        "Delete All Sessions", 
+        "Are you sure you want to delete ALL recorded sessions?\n\nThis action cannot be undone and will permanently remove:\n• All audio recordings\n• All transcripts\n• All screenshots\n• All session folders",
+        "Delete All",
+        "Cancel"
+    )
+    
+    if buttonPressed == "Delete All" then
+        print("User confirmed deletion of all sessions")
+        hs.alert.show("🗑️ Deleting all sessions...", 2)
+        
+        -- Delete the entire recordings directory
+        local deleteCmd = string.format('rm -rf "%s"', recordingDirectory)
+        local success = os.execute(deleteCmd)
+        
+        if success then
+            -- Recreate the empty recordings directory
+            audioRecorder.ensureRecordingDirectory()
+            hs.alert.show("✅ All sessions deleted", 2)
+            print("Successfully deleted all recording sessions")
+        else
+            hs.alert.show("❌ Failed to delete sessions", 2)
+            print("Failed to delete recording sessions")
+        end
+    else
+        print("User cancelled session deletion")
+        hs.alert.show("Deletion cancelled", 1)
+    end
+end
