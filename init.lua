@@ -15,6 +15,11 @@ local availableDevices = {}  -- Cache of available devices
 local selectedPromptIndex = nil  -- Track which prompt is selected
 local prompts = {}  -- Prompts loaded from JSON file
 
+-- Screen configuration
+local availableScreens = {}  -- Cache of available screens
+local selectedScreenId = nil  -- Selected screen for screenshots
+local currentScreenName = "Main Display"  -- Display name for current screen
+
 -- Screenshot configuration
 local screenshotOptions = {
     none = "None",
@@ -24,11 +29,12 @@ local screenshotOptions = {
 local selectedScreenshotOption = "none"  -- Default to no screenshot
 
 local screenshotHandlingOptions = {
-    transcript = "Include in Transcript",
-    clipboard = "Copy to Clipboard",
+    nothing = "Do Nothing",
+    link = "Link in Transcript", 
+    base64 = "Base64 in Transcript",
     prompt = "Send to AI Prompt"
 }
-local selectedScreenshotHandling = "transcript"  -- Default to include in transcript
+local selectedScreenshotHandling = "nothing"  -- Default to do nothing
 
 local currentScreenshotPath = nil  -- Store path of current screenshot
 
@@ -125,8 +131,20 @@ function audioRecorder.transcribeAudio(audioFilePath)
                     
                     -- Pass screenshot to AI if handling option is set to "prompt"
                     local screenshotForAI = nil
+                    print("🔍 DEBUG: Screenshot handling check:")
+                    print("  currentScreenshotPath: " .. tostring(currentScreenshotPath))
+                    print("  selectedScreenshotHandling: " .. tostring(selectedScreenshotHandling))
                     if currentScreenshotPath and selectedScreenshotHandling == "prompt" then
                         screenshotForAI = currentScreenshotPath
+                        print("  ✅ Screenshot will be passed to AI: " .. screenshotForAI)
+                    else
+                        print("  ❌ Screenshot will NOT be passed to AI")
+                        if not currentScreenshotPath then
+                            print("    Reason: No screenshot path")
+                        end
+                        if selectedScreenshotHandling ~= "prompt" then
+                            print("    Reason: Screenshot handling is '" .. selectedScreenshotHandling .. "', not 'prompt'")
+                        end
                     end
                     
                     local processedTranscript = audioRecorder.applyPromptToTranscript(transcript, selectedPromptIndex, screenshotForAI)
@@ -156,16 +174,9 @@ function audioRecorder.transcribeAudio(audioFilePath)
                     transcript = audioRecorder.formatTranscriptWithScreenshot(transcript, currentScreenshotPath)
                 end
                 
-                -- Copy to clipboard (with special handling for screenshot+text combination)
-                if currentScreenshotPath and selectedScreenshotHandling == "clipboard" then
-                    -- Copy both text and screenshot to clipboard using JXA
-                    audioRecorder.copyTextAndScreenshotToClipboard(transcript, currentScreenshotPath)
-                    print("Transcript and screenshot copied to clipboard")
-                else
-                    -- Normal text-only clipboard
-                    hs.pasteboard.setContents(transcript)
-                    print("Transcript copied to clipboard")
-                end
+                -- Copy to clipboard (text only, no special screenshot handling)
+                hs.pasteboard.setContents(transcript)
+                print("Transcript copied to clipboard")
                 
                 -- Reset screenshot path for next recording
                 currentScreenshotPath = nil
@@ -265,7 +276,11 @@ function audioRecorder.startRecording()
     
     -- Take screenshot at start if option is selected
     if selectedScreenshotOption == "start" then
+        print("🔍 DEBUG: Taking screenshot at START")
         currentScreenshotPath = audioRecorder.takeScreenshot(timestamp, "start")
+        print("🔍 DEBUG: Screenshot path set to: " .. tostring(currentScreenshotPath))
+    else
+        print("🔍 DEBUG: No screenshot at start (option: " .. selectedScreenshotOption .. ")")
     end
     
     -- Build the complete command as a string
@@ -282,7 +297,11 @@ function audioRecorder.startRecording()
         
         -- Take screenshot at end if option is selected
         if selectedScreenshotOption == "end_" then
+            print("🔍 DEBUG: Taking screenshot at END")
             currentScreenshotPath = audioRecorder.takeScreenshot(timestamp, "end")
+            print("🔍 DEBUG: Screenshot path set to: " .. tostring(currentScreenshotPath))
+        else
+            print("🔍 DEBUG: No screenshot at end (option: " .. selectedScreenshotOption .. ")")
         end
         
         -- Check if file was actually created (exit code can be non-zero due to signal termination)
@@ -377,32 +396,6 @@ function audioRecorder.setAudioDevice(deviceId, deviceName)
     audioRecorder.updateMenubar()
 end
 
--- Screenshot functionality
-
--- Take a screenshot and return the file path
-function audioRecorder.takeScreenshot(timestamp, suffix)
-    if selectedScreenshotOption == "none" then
-        return nil
-    end
-    
-    local sessionDir = recordingDirectory .. "/recording_" .. timestamp
-    local screenshotPath = sessionDir .. "/screenshot_" .. timestamp .. "_" .. suffix .. ".png"
-    
-    -- Take screenshot using macOS screencapture command
-    local cmd = string.format('screencapture -x "%s"', screenshotPath)
-    local success = os.execute(cmd)
-    
-    if success then
-        print("Screenshot saved: " .. screenshotPath)
-        hs.alert.show("📸 Screenshot captured", 1)
-        return screenshotPath
-    else
-        print("Failed to take screenshot")
-        hs.alert.show("❌ Screenshot failed", 1)
-        return nil
-    end
-end
-
 -- Set screenshot option
 function audioRecorder.setScreenshotOption(option)
     selectedScreenshotOption = option
@@ -413,29 +406,80 @@ end
 
 -- Set screenshot handling option
 function audioRecorder.setScreenshotHandling(option)
+    print("🔍 DEBUG: setScreenshotHandling called:")
+    print("  Previous option: " .. tostring(selectedScreenshotHandling))
+    print("  New option: " .. tostring(option))
+    
     selectedScreenshotHandling = option
     local optionName = screenshotHandlingOptions[option] or "Unknown"
+    print("  Option name: " .. optionName)
+    
     hs.alert.show("Screenshot handling: " .. optionName, 1)
     audioRecorder.updateMenubar()
+    
+    print("  ✅ Screenshot handling updated to: " .. selectedScreenshotHandling)
 end
 
--- Process screenshot based on handling option
-function audioRecorder.processScreenshot(screenshotPath)
-    if not screenshotPath then
+-- Screenshot functionality
+
+-- Take a screenshot and return the file path
+function audioRecorder.takeScreenshot(timestamp, suffix)
+    print("🔍 DEBUG: takeScreenshot called:")
+    print("  selectedScreenshotOption: " .. tostring(selectedScreenshotOption))
+    print("  timestamp: " .. tostring(timestamp))
+    print("  suffix: " .. tostring(suffix))
+    print("  selectedScreenId: " .. tostring(selectedScreenId))
+    print("  currentScreenName: " .. tostring(currentScreenName))
+    
+    if selectedScreenshotOption == "none" then
+        print("  ❌ Screenshot disabled - returning nil")
         return nil
     end
     
-    if selectedScreenshotHandling == "clipboard" then
-        -- Don't handle clipboard here - it will be handled with text combination
-        -- Just return the path so it can be used later
-        return screenshotPath
-    elseif selectedScreenshotHandling == "prompt" then
-        -- Return path for AI prompt processing
-        hs.alert.show("📸 Screenshot will be sent to AI", 1)
-        return screenshotPath
-    else -- transcript (default)
-        -- Return path for transcript inclusion
-        return screenshotPath
+    local sessionDir = recordingDirectory .. "/recording_" .. timestamp
+    local screenshotPath = sessionDir .. "/screenshot_" .. timestamp .. "_" .. suffix .. ".png"
+    
+    print("  📁 Session directory: " .. sessionDir)
+    print("  📸 Screenshot path: " .. screenshotPath)
+    
+    -- Build screenshot command with screen selection
+    local cmd
+    if selectedScreenId and availableScreens[selectedScreenId] then
+        -- Get the screen frame for targeted screenshot
+        local screen = availableScreens[selectedScreenId].screen
+        local frame = screen:frame()
+        
+        -- Use screencapture with specific screen region
+        cmd = string.format('screencapture -x -R%d,%d,%d,%d "%s"', 
+                           frame.x, frame.y, frame.w, frame.h, screenshotPath)
+        print("  🖥️ Screenshot command (screen " .. selectedScreenId .. "): " .. cmd)
+    else
+        -- Fallback to main display
+        cmd = string.format('screencapture -x "%s"', screenshotPath)
+        print("  🖥️ Screenshot command (fallback): " .. cmd)
+    end
+    
+    local success = os.execute(cmd)
+    print("  📊 Command result: " .. tostring(success))
+    
+    if success then
+        -- Verify file was actually created
+        local file = io.open(screenshotPath, "r")
+        if file then
+            file:close()
+            local fileSize = hs.execute(string.format('stat -f%%z "%s"', screenshotPath)):gsub("%s+", "")
+            print("  ✅ Screenshot file created successfully, size: " .. fileSize .. " bytes")
+            hs.alert.show("📸 Screenshot captured (" .. currentScreenName .. ")", 1)
+            return screenshotPath
+        else
+            print("  ❌ Screenshot command succeeded but file was not created!")
+            hs.alert.show("❌ Screenshot failed (file not created)", 1)
+            return nil
+        end
+    else
+        print("  ❌ Screenshot command failed")
+        hs.alert.show("❌ Screenshot failed", 1)
+        return nil
     end
 end
 
@@ -485,33 +529,37 @@ function audioRecorder.formatTranscriptWithScreenshot(transcript, screenshotPath
         return transcript
     end
     
-    -- Process screenshot based on handling option
-    local processedPath = audioRecorder.processScreenshot(screenshotPath)
-    
-    if not processedPath then
-        -- Screenshot was handled separately
+    -- Handle different screenshot options
+    if selectedScreenshotHandling == "nothing" then
+        -- Do nothing - just return original transcript
         return transcript
-    end
-    
-    -- For clipboard handling, don't include the path in transcript since the image will be in clipboard
-    if selectedScreenshotHandling == "clipboard" then
-        return transcript
-    end
-    
-    if selectedScreenshotHandling == "prompt" then
+    elseif selectedScreenshotHandling == "prompt" then
         -- For AI prompt processing, include a note
         local separator = "\n" .. string.rep("-", 50) .. "\n"
-        local screenshotInfo = "📸 Screenshot (for AI analysis): " .. processedPath .. separator
+        local screenshotInfo = "📸 Screenshot (for AI analysis): " .. screenshotPath .. separator
         
         if selectedScreenshotOption == "start" then
             return screenshotInfo .. transcript
         elseif selectedScreenshotOption == "end_" then
             return transcript .. separator .. screenshotInfo
         end
-    else
-        -- Default transcript inclusion
+    elseif selectedScreenshotHandling == "link" then
+        -- Include file path link in transcript
         local separator = "\n" .. string.rep("-", 50) .. "\n"
-        local screenshotInfo = "📸 Screenshot: " .. processedPath .. separator
+        local screenshotInfo = "📸 Screenshot: " .. screenshotPath .. separator
+        
+        if selectedScreenshotOption == "start" then
+            return screenshotInfo .. transcript
+        elseif selectedScreenshotOption == "end_" then
+            return transcript .. separator .. screenshotInfo
+        end
+    elseif selectedScreenshotHandling == "base64" then
+        -- Include base64 encoded image in transcript
+        local base64Cmd = string.format('base64 -i "%s"', screenshotPath)
+        local base64Data = hs.execute(base64Cmd):gsub("%s+", "")
+        
+        local separator = "\n" .. string.rep("-", 50) .. "\n"
+        local screenshotInfo = "📸 Screenshot (Base64): data:image/png;base64," .. base64Data .. separator
         
         if selectedScreenshotOption == "start" then
             return screenshotInfo .. transcript
@@ -672,9 +720,21 @@ function audioRecorder.applyPromptToTranscript(transcript, promptIndex, screensh
     -- Check if we have a screenshot to analyze
     local useVision = screenshotPath and selectedScreenshotHandling == "prompt"
     local model = useVision and "gpt-4o" or "gpt-4o-mini"
-    print("Using model: " .. model)
+    print("🔍 DEBUG: Vision setup:")
+    print("  screenshotPath: " .. tostring(screenshotPath))
+    print("  selectedScreenshotHandling: " .. tostring(selectedScreenshotHandling))
+    print("  useVision: " .. tostring(useVision))
+    print("  model: " .. model)
     if useVision then
         print("🖼️ Vision mode: analyzing screenshot")
+        -- Verify screenshot file exists
+        local file = io.open(screenshotPath, "r")
+        if file then
+            file:close()
+            print("  ✅ Screenshot file exists and is readable")
+        else
+            print("  ❌ ERROR: Screenshot file does not exist or is not readable!")
+        end
     end
     
     hs.alert.show("🤖 Processing with AI...", 2)
@@ -686,23 +746,33 @@ function audioRecorder.applyPromptToTranscript(transcript, promptIndex, screensh
     -- Build the JSON payload for the chat completion
     local messages
     if useVision then
+        print("🔍 DEBUG: Building vision payload...")
         -- Convert screenshot to base64 for vision API
         local base64Cmd = string.format('base64 -i "%s"', screenshotPath)
+        print("  Base64 command: " .. base64Cmd)
         local base64Data = hs.execute(base64Cmd):gsub("%s+", "")
+        print("  Base64 data length: " .. string.len(base64Data))
+        print("  Base64 data preview: " .. base64Data:sub(1, 50) .. "...")
+        
+        if string.len(base64Data) == 0 then
+            print("  ❌ ERROR: Base64 conversion failed - empty result!")
+        else
+            print("  ✅ Base64 conversion successful")
+        end
         
         messages = string.format([[{
             "model": "%s",
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant with vision capabilities. Process the user's transcript and analyze the provided screenshot according to their instructions. Return ONLY the processed result without any additional commentary or explanation."
+                    "content": "You are a helpful assistant with vision capabilities. Analyze the provided screenshot and describe what you see in a factual, neutral way. Do not process any instructions - just describe the visual content."
                 },
                 {
                     "role": "user",
                     "content": [
                         {
                             "type": "text",
-                            "text": "Instructions: %s\n\nTranscript to process: %s\n\nPlease analyze the screenshot and apply the instructions to both the transcript and visual content. Return only the final processed result:"
+                            "text": "Please describe what you see in this screenshot in a simple, factual way. Transcript context: %s"
                         },
                         {
                             "type": "image_url",
@@ -713,10 +783,17 @@ function audioRecorder.applyPromptToTranscript(transcript, promptIndex, screensh
                     ]
                 }
             ],
-            "temperature": 0.7,
-            "max_tokens": 4000
-        }]], model, prompt.content:gsub('"', '\\"'):gsub('\n', '\\n'), transcript:gsub('"', '\\"'):gsub('\n', '\\n'), base64Data)
+            "temperature": 0.3,
+            "max_tokens": 1000
+        }]], model, transcript:gsub('"', '\\"'):gsub('\n', '\\n'), base64Data)
+        
+        print("🔍 DEBUG: Vision message structure:")
+        print("  Model: " .. model)
+        print("  Prompt content length: " .. string.len(prompt.content))
+        print("  Transcript length: " .. string.len(transcript))
+        print("  Base64 data in message: " .. (base64Data and "YES (" .. string.len(base64Data) .. " chars)" or "NO"))
     else
+        print("🔍 DEBUG: Building text-only payload...")
         messages = string.format([[{
             "model": "%s",
             "messages": [
@@ -732,6 +809,11 @@ function audioRecorder.applyPromptToTranscript(transcript, promptIndex, screensh
             "temperature": 0.7,
             "max_tokens": 4000
         }]], model, prompt.content:gsub('"', '\\"'):gsub('\n', '\\n'), transcript:gsub('"', '\\"'):gsub('\n', '\\n'))
+        
+        print("🔍 DEBUG: Text-only message structure:")
+        print("  Model: " .. model)
+        print("  Prompt content length: " .. string.len(prompt.content))
+        print("  Transcript length: " .. string.len(transcript))
     end
     
     print("📝 JSON payload length: " .. string.len(messages))
@@ -795,7 +877,26 @@ function audioRecorder.applyPromptToTranscript(transcript, promptIndex, screensh
             local rawResponse = rawFile:read("*all")
             rawFile:close()
             print("🔍 Raw API response length: " .. string.len(rawResponse))
-            print("🔍 Raw API response: " .. rawResponse:sub(1, 500) .. (string.len(rawResponse) > 500 and "..." or ""))
+            print("🔍 Raw API response preview: " .. rawResponse:sub(1, 500) .. (string.len(rawResponse) > 500 and "..." or ""))
+            
+            -- Check for API errors in the raw response
+            if rawResponse:match('"error"') then
+                print("❌ DEBUG: API returned an error!")
+                local errorMatch = rawResponse:match('"message"%s*:%s*"([^"]*)"')
+                if errorMatch then
+                    print("  Error message: " .. errorMatch)
+                end
+            elseif rawResponse:match('"I\'m sorry, I can\'t assist with that"') or rawResponse:match('"I can\'t assist with that"') then
+                print("⚠️ DEBUG: API refused to process due to content policy!")
+                print("  This usually means the screenshot contains:")
+                print("    - Personal/sensitive information")
+                print("    - Content that triggers safety filters")
+                print("    - Screenshots of certain applications")
+                print("  Try taking a screenshot of something more generic (like a webpage or text editor)")
+            else
+                print("✅ DEBUG: No error detected in API response")
+            end
+            
             os.remove(tempFile .. ".raw") -- Clean up raw file
         else
             print("❌ Could not read raw API response file")
@@ -847,6 +948,51 @@ function string:trim()
     return self:match("^%s*(.-)%s*$")
 end
 
+-- Get available screens
+function audioRecorder.getAvailableScreens()
+    local screens = hs.screen.allScreens()
+    local screenList = {}
+    
+    for i, screen in ipairs(screens) do
+        local frame = screen:frame()
+        local name = screen:name() or ("Display " .. i)
+        
+        table.insert(screenList, {
+            id = i,
+            screen = screen,
+            name = name,
+            frame = frame,
+            description = string.format("%s (%dx%d)", name, frame.w, frame.h)
+        })
+    end
+    
+    return screenList
+end
+
+-- Initialize screens at startup
+function audioRecorder.initializeScreens()
+    availableScreens = audioRecorder.getAvailableScreens()
+    print("Found " .. #availableScreens .. " screens:")
+    for i, screen in ipairs(availableScreens) do
+        print("  " .. screen.id .. ". " .. screen.description)
+    end
+    
+    -- Set default to main screen if no selection
+    if not selectedScreenId and #availableScreens > 0 then
+        selectedScreenId = 1
+        currentScreenName = availableScreens[1].description
+        print("Default screen set to: " .. currentScreenName)
+    end
+end
+
+-- Set selected screen
+function audioRecorder.setSelectedScreen(screenId, screenName)
+    selectedScreenId = screenId
+    currentScreenName = screenName
+    hs.alert.show("Screenshot screen: " .. screenName, 1)
+    audioRecorder.updateMenubar()
+end
+
 -- Bind keyboard shortcut (Cmd+Option+R)
 hs.hotkey.bind({"cmd", "alt"}, "r", function()
     audioRecorder.toggleRecording()
@@ -893,8 +1039,20 @@ function audioRecorder.updateMenubar()
         })
     end
     
-    -- Add screenshot handling options (only show if screenshots are enabled)
+    -- Add screen selection (only show if screenshots are enabled)
     if selectedScreenshotOption ~= "none" then
+        table.insert(mainMenu, {title = "📺 Screenshot Screen:", disabled = true})
+        for _, screen in ipairs(availableScreens) do
+            local isSelected = selectedScreenId == screen.id
+            table.insert(mainMenu, {
+                title = (isSelected and "✓ " or "   ") .. screen.description,
+                fn = function()
+                    audioRecorder.setSelectedScreen(screen.id, screen.description)
+                end
+            })
+        end
+        
+        -- Add screenshot handling options
         table.insert(mainMenu, {title = "📸 Screenshot Handling:", disabled = true})
         for key, displayName in pairs(screenshotHandlingOptions) do
             local isSelected = selectedScreenshotHandling == key
@@ -948,6 +1106,11 @@ function audioRecorder.updateMenubar()
         audioRecorder.updateMenubar()
         hs.alert.show("Audio devices refreshed", 1)
     end})
+    table.insert(mainMenu, {title = "🔄 Refresh Screens", fn = function()
+        audioRecorder.initializeScreens()
+        audioRecorder.updateMenubar()
+        hs.alert.show("Screens refreshed", 1)
+    end})
     table.insert(mainMenu, {title = "🔄 Reload Prompts", fn = function()
         audioRecorder.loadPrompts()
         audioRecorder.updateMenubar()
@@ -963,8 +1126,9 @@ end
 
 if menubar then
     menubar:setTitle("🎙️")
-    -- Initialize devices and menubar
+    -- Initialize devices, screens and menubar
     audioRecorder.initializeDevices()
+    audioRecorder.initializeScreens()
     audioRecorder.loadPrompts()  -- Load prompts from JSON file
     audioRecorder.updateMenubar()
 end
