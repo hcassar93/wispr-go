@@ -35,6 +35,7 @@ So I hacked together this Hammerspoon plugin that does exactly what I need. **Pl
 - 📸 **NEW:** Available screenshot capture during recording sessions
 - 🔗 **NEW:** Path or Base64 screenshots included in responses
 - 🖼️ **NEW:** Screenshots passed to AI prompts for enhanced context understanding
+- 📊 **NEW:** Word count gamification with automatic tracking and motivational progress levels
 
 ## Installation
 
@@ -204,6 +205,61 @@ Screenshots are automatically passed to your selected AI prompts for enhanced co
 - **Design Feedback**: Visual context helps AI understand design critiques
 - **Tutorial Creation**: Screenshots capture step-by-step processes alongside narration
 - **Bug Reports**: Visual evidence combined with verbal descriptions
+
+## Word Count Gamification 📊
+
+### Automatic Word Tracking
+
+Every time a transcript is generated and copied to your clipboard, the system automatically:
+- 📝 **Counts the words** in the transcribed text
+- 💾 **Saves the count** to a persistent JSON file at `~/Desktop/Recordings/word_stats.json`
+- 🎯 **Updates your total** across all recording sessions
+- 🏆 **Shows motivational messages** based on your progress
+
+### Viewing Your Stats
+
+Access your transcription statistics through the menu bar:
+1. Click the 🎙️ icon in your menu bar
+2. Select "📊 View Word Statistics"
+
+**Statistics Include:**
+- **Total Words**: Cumulative word count across all sessions
+- **Total Sessions**: Number of recording sessions completed
+- **Average Words per Session**: Helps track your speaking patterns
+- **Last Recording**: Timestamp of your most recent session
+
+### Motivational Levels 🎮
+
+The system includes gamification with motivational messages based on your progress:
+- 🌱 **Getting started!** (< 100 words)
+- 🌿 **Building momentum!** (100-999 words)
+- 🌳 **Growing strong!** (1,000-4,999 words)
+- 🚀 **On fire!** (5,000-9,999 words)
+- ⭐ **Transcription star!** (10,000-24,999 words)
+- 💎 **Elite transcriber!** (25,000-49,999 words)
+- 🏆 **Master of words!** (50,000-99,999 words)
+- 👑 **Transcription legend!** (100,000+ words)
+
+### Managing Your Stats
+
+**Reset Statistics**: If you want to start fresh, you can reset your word count statistics:
+1. Click the 🎙️ icon → "📊 Reset Word Stats"
+2. Confirm the reset (this only affects statistics, not your actual recordings)
+
+**Data Location**: Word statistics are stored in `~/Desktop/Recordings/word_stats.json`
+
+### Example Stats Display
+
+```
+📊 TRANSCRIPTION STATS 📊
+
+🎯 Total Words: 15,247
+📝 Total Sessions: 89
+📈 Average per Session: 171.3 words
+🕐 Last Recording: 2025-07-16 14:30:25
+
+Keep transcribing to level up! 🚀
+```
 
 ## Troubleshooting
 

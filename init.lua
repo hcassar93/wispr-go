@@ -15,6 +15,10 @@ local availableDevices = {}  -- Cache of available devices
 local selectedPromptIndex = nil  -- Track which prompt is selected
 local prompts = {}  -- Prompts loaded from JSON file
 
+-- Word counting configuration
+local wordStatsFile = os.getenv("HOME") .. "/Desktop/Recordings/word_stats.json"
+local totalWordsTranscribed = 0  -- Cache of current total
+
 -- Screen configuration
 local availableScreens = {}  -- Cache of available screens
 local selectedScreenId = nil  -- Selected screen for screenshots
@@ -84,6 +88,192 @@ if OPENAI_API_KEY ~= "YOUR_API_KEY_HERE" then
     print("Using API key starting with:", string.sub(OPENAI_API_KEY, 1, 10) .. "...")
 end
 print("=====================")
+
+-- Word counting functionality
+
+-- Load word statistics from JSON file
+function audioRecorder.loadWordStats()
+    local file = io.open(wordStatsFile, "r")
+    if file then
+        local content = file:read("*all")
+        file:close()
+        
+        local success, data = pcall(function()
+            -- Simple JSON parsing for word stats
+            local totalMatch = content:match('"totalWords"%s*:%s*(%d+)')
+            local sessionsMatch = content:match('"totalSessions"%s*:%s*(%d+)')
+            local lastRecordingMatch = content:match('"lastRecording"%s*:%s*"([^"]*)"')
+            
+            return {
+                totalWords = tonumber(totalMatch) or 0,
+                totalSessions = tonumber(sessionsMatch) or 0,
+                lastRecording = lastRecordingMatch or "Never"
+            }
+        end)
+        
+        if success and data then
+            totalWordsTranscribed = data.totalWords
+            print("📊 Loaded word stats: " .. totalWordsTranscribed .. " total words from " .. data.totalSessions .. " sessions")
+            return data
+        end
+    end
+    
+    -- Default stats if file doesn't exist or parsing fails
+    totalWordsTranscribed = 0
+    print("📊 Starting fresh word count")
+    return {
+        totalWords = 0,
+        totalSessions = 0,
+        lastRecording = "Never"
+    }
+end
+
+-- Save word statistics to JSON file
+function audioRecorder.saveWordStats(newWords, sessionTimestamp)
+    local stats = audioRecorder.loadWordStats()
+    
+    -- Update stats
+    stats.totalWords = stats.totalWords + newWords
+    stats.totalSessions = stats.totalSessions + 1
+    stats.lastRecording = sessionTimestamp or os.date("%Y-%m-%d %H:%M:%S")
+    
+    -- Update cache
+    totalWordsTranscribed = stats.totalWords
+    
+    -- Create JSON content
+    local jsonContent = string.format([[{
+    "totalWords": %d,
+    "totalSessions": %d,
+    "lastRecording": "%s",
+    "averageWordsPerSession": %.1f,
+    "lastUpdate": "%s"
+}]], stats.totalWords, 
+     stats.totalSessions,
+     stats.lastRecording,
+     stats.totalSessions > 0 and (stats.totalWords / stats.totalSessions) or 0,
+     os.date("%Y-%m-%d %H:%M:%S"))
+    
+    -- Write to file
+    local file = io.open(wordStatsFile, "w")
+    if file then
+        file:write(jsonContent)
+        file:close()
+        print("📊 Word stats saved: +" .. newWords .. " words (Total: " .. stats.totalWords .. " words)")
+        return true
+    else
+        print("❌ Failed to save word stats")
+        return false
+    end
+end
+
+-- Count words in text (simple word counting)
+function audioRecorder.countWords(text)
+    if not text or text == "" then
+        return 0
+    end
+    
+    -- Simple word counting: split by whitespace and count non-empty strings
+    local wordCount = 0
+    for word in text:gmatch("%S+") do
+        wordCount = wordCount + 1
+    end
+    
+    return wordCount
+end
+
+-- Display word statistics
+function audioRecorder.showWordStats()
+    local stats = audioRecorder.loadWordStats()
+    local message = string.format([[📊 TRANSCRIPTION STATS 📊
+
+🎯 Total Words: %s
+📝 Total Sessions: %s
+📈 Average per Session: %.1f words
+🕐 Last Recording: %s
+
+Keep transcribing to level up! 🚀]], 
+        audioRecorder.formatNumber(stats.totalWords),
+        audioRecorder.formatNumber(stats.totalSessions),
+        stats.totalSessions > 0 and (stats.totalWords / stats.totalSessions) or 0,
+        stats.lastRecording)
+    
+    hs.alert.show(message, 8)
+    print("📊 Word Statistics:")
+    print("  Total Words: " .. stats.totalWords)
+    print("  Total Sessions: " .. stats.totalSessions)
+    print("  Last Recording: " .. stats.lastRecording)
+end
+
+-- Format large numbers with commas
+function audioRecorder.formatNumber(num)
+    local formatted = tostring(num)
+    local k = 3
+    while k < #formatted do
+        formatted = formatted:sub(1, #formatted - k) .. "," .. formatted:sub(#formatted - k + 1)
+        k = k + 4
+    end
+    return formatted
+end
+
+-- Get motivational message based on word count
+function audioRecorder.getMotivationalMessage(wordCount)
+    if wordCount < 100 then
+        return "🌱 Getting started!"
+    elseif wordCount < 1000 then
+        return "🌿 Building momentum!"
+    elseif wordCount < 5000 then
+        return "🌳 Growing strong!"
+    elseif wordCount < 10000 then
+        return "🚀 On fire!"
+    elseif wordCount < 25000 then
+        return "⭐ Transcription star!"
+    elseif wordCount < 50000 then
+        return "💎 Elite transcriber!"
+    elseif wordCount < 100000 then
+        return "🏆 Master of words!"
+    else
+        return "👑 Transcription legend!"
+    end
+end
+
+-- Reset word statistics with confirmation
+function audioRecorder.resetWordStats()
+    -- Show confirmation dialog
+    local buttonPressed = hs.dialog.blockAlert(
+        "Reset Word Statistics", 
+        "Are you sure you want to reset your word count statistics?\n\nThis will permanently remove:\n• Total word count\n• Session count\n• Recording history\n\nYour actual recordings will NOT be deleted.",
+        "Reset Stats",
+        "Cancel"
+    )
+    
+    if buttonPressed == "Reset Stats" then
+        print("User confirmed reset of word statistics")
+        
+        -- Reset stats
+        local jsonContent = string.format([[{
+    "totalWords": 0,
+    "totalSessions": 0,
+    "lastRecording": "Never",
+    "averageWordsPerSession": 0.0,
+    "lastUpdate": "%s"
+}]], os.date("%Y-%m-%d %H:%M:%S"))
+        
+        local file = io.open(wordStatsFile, "w")
+        if file then
+            file:write(jsonContent)
+            file:close()
+            totalWordsTranscribed = 0
+            hs.alert.show("📊 Word statistics reset! 🌱", 2)
+            print("Successfully reset word statistics")
+        else
+            hs.alert.show("❌ Failed to reset statistics", 2)
+            print("Failed to reset word statistics")
+        end
+    else
+        print("User cancelled word statistics reset")
+        hs.alert.show("Reset cancelled", 1)
+    end
+end
 
 -- Transcribe audio file using OpenAI Whisper API
 function audioRecorder.transcribeAudio(audioFilePath)
@@ -172,6 +362,20 @@ function audioRecorder.transcribeAudio(audioFilePath)
                 -- Include screenshot information if available (but not if sent to AI prompt)
                 if selectedScreenshotHandling ~= "prompt" then
                     transcript = audioRecorder.formatTranscriptWithScreenshot(transcript, currentScreenshotPath)
+                end
+                
+                -- Count words and update statistics
+                local wordCount = audioRecorder.countWords(transcript)
+                local timestamp = audioFilePath:match("recording_([%d%-_]+)")
+                if audioRecorder.saveWordStats(wordCount, timestamp) then
+                    local stats = audioRecorder.loadWordStats()
+                    local motivationalMsg = audioRecorder.getMotivationalMessage(stats.totalWords)
+                    print("📊 +" .. wordCount .. " words added. Total: " .. stats.totalWords .. " words")
+                    
+                    -- Show word count achievement
+                    hs.timer.doAfter(0.5, function()
+                        hs.alert.show("+" .. wordCount .. " words! 📊 Total: " .. audioRecorder.formatNumber(stats.totalWords) .. " " .. motivationalMsg, 3)
+                    end)
                 end
                 
                 -- Copy to clipboard (text only, no special screenshot handling)
@@ -912,6 +1116,10 @@ function audioRecorder.applyPromptToTranscript(transcript, promptIndex, screensh
                 print("📊 Character count - Original: " .. string.len(transcript) .. ", Processed: " .. string.len(enhancedTranscript:trim()))
                 hs.alert.show("✅ AI processing complete", 1)
                 print("=== AI PROCESSING SUCCESS ===")
+                
+                -- Update word count statistics
+                audioRecorder.updateWordCount(transcript, enhancedTranscript)
+                
                 return enhancedTranscript:trim()
             else
                 print("❌ AI returned empty/null response")
@@ -1089,7 +1297,10 @@ function audioRecorder.updateMenubar()
     
     -- Add remaining menu items
     table.insert(mainMenu, {title = "-"})
-    table.insert(mainMenu, {title = "📁 Open Recordings Folder", fn = function()
+    table.insert(mainMenu, {title = "� View Word Statistics", fn = function()
+        audioRecorder.showWordStats()
+    end})
+    table.insert(mainMenu, {title = "�📁 Open Recordings Folder", fn = function()
         hs.execute("open " .. recordingDirectory)
     end})
     table.insert(mainMenu, {title = "-"})
@@ -1108,6 +1319,9 @@ function audioRecorder.updateMenubar()
         audioRecorder.updateMenubar()
         hs.alert.show("Prompts reloaded", 1)
     end})
+    table.insert(mainMenu, {title = "📊 Reset Word Stats", fn = function()
+        audioRecorder.resetWordStats()
+    end})
     table.insert(mainMenu, {title = "-"})
     table.insert(mainMenu, {title = "🗑️ Delete All Sessions", fn = function()
         audioRecorder.deleteAllSessions()
@@ -1118,10 +1332,11 @@ end
 
 if menubar then
     menubar:setTitle("🎙️")
-    -- Initialize devices, screens and menubar
+    -- Initialize devices, screens, word stats and menubar
     audioRecorder.initializeDevices()
     audioRecorder.initializeScreens()
     audioRecorder.loadPrompts()  -- Load prompts from JSON file
+    audioRecorder.loadWordStats()  -- Load word statistics
     audioRecorder.updateMenubar()
 end
 
