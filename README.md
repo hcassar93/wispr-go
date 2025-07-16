@@ -1,11 +1,28 @@
 # Audio Recorder with AI Transcription
 
-https://www.loom.com/share/df6b56a88eed42e1add615915aec72bb
+[![Wispr-Go - Watch Video](https://cdn.loom.com/sessions/thumbnails/df6b56a88eed42e1add615915aec72bb-0f48e4236291bd4b-full-play.gif)](https://www.loom.com/share/df6b56a88eed42e1add615915aec72bb)
+
+[Wispr-Go - Watch Video](https://www.loom.com/share/df6b56a88eed42e1add615915aec72bb)
 
 
 > Built by GitHub Copilot
 
-A Hammerspoon-based audio recording tool that automatically transcribes recordings using OpenAI's Whisper API and processes them with configurable AI prompts.
+## Problems This Solves
+
+### Native macOS Transcription Sucks
+macOS's built-in transcription is painfully inaccurate and unreliable. **Whisper is way, way better** - it actually understands what you're saying and handles various accents, technical terms, and background noise like a champ.
+
+### Beyond Basic Transcription 
+Often I don't just want my voice transcribed - I want it **passed directly to a prompt for post-processing**. Whether that's formatting meeting notes, creating action items, writing code documentation, or generating emails from voice memos, raw transcription is just the starting point.
+
+### Visual Context Missing
+When explaining something on screen, **I want to attach a screenshot** to provide visual context alongside my voice. This is crucial for code reviews, design feedback, bug reports, or any workflow where what you're looking at matters as much as what you're saying.
+
+### No Existing Solutions
+Here's the kicker: **none of the major AI chat desktop applications or operating systems currently provide this**. They give you either basic transcription OR AI processing OR screenshots, but never all three integrated seamlessly.
+
+### The Hack
+So I hacked together this Hammerspoon plugin that does exactly what I need. **Please, someone build a SaaS that does all this natively.** In the meantime, I'm using this and it works beautifully.
 
 ## Features
 
@@ -15,6 +32,9 @@ A Hammerspoon-based audio recording tool that automatically transcribes recordin
 - 📋 Auto-paste transcripts to focused applications
 - 🎛️ Menu bar interface for easy access
 - ⌨️ Keyboard shortcut (Cmd+Option+R) to toggle recording
+- 📸 **NEW:** Available screenshot capture during recording sessions
+- 🔗 **NEW:** Path or Base64 screenshots included in responses
+- 🖼️ **NEW:** Screenshots passed to AI prompts for enhanced context understanding
 
 ## Installation
 
@@ -113,10 +133,21 @@ Create a `prompts.json` file in the same directory as `init.lua` to define custo
 1. **Keyboard Shortcut**: Press `Cmd+Option+R` to start/stop recording
 2. **Menu Bar**: Click the 🎙️ icon in your menu bar and select "Start Recording"
 
+**📸 Screenshot Feature**: Screenshots are automatically captured during recording sessions and saved alongside your audio files.
+
 ### Selecting Microphone
 
 1. Click the 🎙️ icon in the menu bar
 2. Choose your preferred microphone from the list
+
+### Using Screenshots with AI
+
+Screenshots captured during recording are automatically:
+- 🔗 **Encoded as base64** and included as local system links in responses
+- 🤖 **Passed to AI prompts** for enhanced context understanding
+- 📁 **Organized in folders** within your recording directory
+
+This allows AI to provide more contextual responses by understanding both what you said and what was on your screen.
 
 ### Using AI Prompts
 
@@ -131,8 +162,48 @@ Recordings are saved to `~/Desktop/Recordings/` with the following structure:
 ```
 ~/Desktop/Recordings/recording_2025-07-15_14-30-25/
 ├── recording_2025-07-15_14-30-25.m4a     # Audio file
-└── recording_2025-07-15_14-30-25.txt     # Transcript (after processing)
+├── recording_2025-07-15_14-30-25.txt     # Transcript (after processing)
+└── screenshots/                          # Screenshot captures (NEW)
+    ├── screenshot_001.png
+    ├── screenshot_002.png
+    └── ...
 ```
+
+## Screenshot Features 📸
+
+### Automatic Screenshot Capture
+
+During recording sessions, the application automatically captures screenshots at regular intervals to provide visual context alongside your audio recordings.
+
+**Key Features:**
+- 📸 **Periodic Screenshots**: Captures screen content during active recording sessions
+- 🖼️ **Visual Context**: Screenshots provide additional context for AI processing
+- 📁 **Organized Storage**: All screenshots are saved in a dedicated `screenshots/` folder within each recording directory
+
+### Base64 Screenshot Integration
+
+Screenshots are automatically encoded as base64 data and included in the system response as local file links.
+
+**Benefits:**
+- 🔗 **Local System Links**: Screenshots accessible as `file://` URLs for easy viewing
+- 💾 **Embedded Data**: Base64 encoding ensures screenshots are preserved in responses
+- 🔄 **Seamless Integration**: No external dependencies for screenshot viewing
+
+### AI-Enhanced Screenshot Processing
+
+Screenshots are automatically passed to your selected AI prompts for enhanced context understanding.
+
+**How it works:**
+- 🤖 **Multi-modal Processing**: AI prompts can analyze both audio transcripts and visual content
+- 🧠 **Enhanced Context**: Screenshots help AI understand what you were working on during recording
+- 📊 **Visual Analysis**: AI can describe, analyze, or reference visual elements from your screen
+- 💡 **Smarter Responses**: Combined audio and visual context leads to more accurate and contextual AI responses
+
+**Example Use Cases:**
+- **Code Reviews**: AI can see your code while you explain issues
+- **Design Feedback**: Visual context helps AI understand design critiques
+- **Tutorial Creation**: Screenshots capture step-by-step processes alongside narration
+- **Bug Reports**: Visual evidence combined with verbal descriptions
 
 ## Troubleshooting
 
@@ -179,6 +250,25 @@ brew install ffmpeg
 2. Check the JSON syntax is valid
 3. Reload prompts from the menu bar: 🎙️ → "Reload Prompts"
 
+### Screenshot Issues
+
+**Screenshots Not Capturing:**
+1. Check macOS screen recording permissions for Hammerspoon:
+   - System Preferences → Security & Privacy → Privacy → Screen Recording
+   - Ensure Hammerspoon is enabled
+2. Verify the `screenshots/` folder is being created in your recording directory
+3. Check Hammerspoon Console for screenshot-related error messages
+
+**Base64 Links Not Working:**
+1. Ensure screenshots are being saved properly (check the `screenshots/` folder)
+2. Verify file permissions allow reading of screenshot files
+3. Check that the local file paths are correctly formatted
+
+**AI Not Processing Screenshots:**
+1. Confirm your selected AI prompt supports image processing
+2. Check that screenshots are being passed correctly to the API
+3. Verify your OpenAI API plan supports vision capabilities
+
 ### Hammerspoon Issues
 
 If Hammerspoon doesn't load the script:
@@ -195,7 +285,8 @@ If Hammerspoon doesn't load the script:
 - FFmpeg
 - OpenAI API key (configured in `.env` file)
 - Internet connection (for API calls)
+- **Screen Recording Permission** for Hammerspoon (for screenshot features)
 
 ## Privacy Note
 
-This tool sends your audio recordings to OpenAI's servers for transcription and processing. Please ensure you're comfortable with this before recording sensitive content.
+This tool sends your audio recordings and captured screenshots to OpenAI's servers for transcription and processing. Please ensure you're comfortable with this before recording sensitive content. Screenshots capture whatever is visible on your screen during recording sessions, so be mindful of any confidential information that may be displayed.
