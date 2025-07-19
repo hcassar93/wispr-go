@@ -181,6 +181,35 @@ function audioRecorder.countWords(text)
     return wordCount
 end
 
+-- Update word count statistics after AI processing
+function audioRecorder.updateWordCount(originalTranscript, enhancedTranscript)
+    if not enhancedTranscript or enhancedTranscript:trim() == "" then
+        print("⚠️ No enhanced transcript to count words from")
+        return
+    end
+    
+    -- Count words from the enhanced transcript (final processed version)
+    local wordCount = audioRecorder.countWords(enhancedTranscript)
+    local timestamp = os.date("%Y-%m-%d_%H-%M-%S")
+    
+    print("📊 Counting words from AI-enhanced transcript...")
+    print("🤖 Enhanced length: " .. string.len(enhancedTranscript) .. " chars")
+    print("📊 Word count: " .. wordCount .. " words")
+    
+    if audioRecorder.saveWordStats(wordCount, timestamp) then
+        local stats = audioRecorder.loadWordStats()
+        local motivationalMsg = audioRecorder.getMotivationalMessage(stats.totalWords)
+        print("📊 +" .. wordCount .. " words added from AI processing. Total: " .. stats.totalWords .. " words")
+        
+        -- Show word count achievement
+        hs.timer.doAfter(0.5, function()
+            hs.alert.show("+" .. wordCount .. " words! 📊 Total: " .. audioRecorder.formatNumber(stats.totalWords) .. " " .. motivationalMsg, 3)
+        end)
+    else
+        print("❌ Failed to save word statistics")
+    end
+end
+
 -- Display word statistics
 function audioRecorder.showWordStats()
     local stats = audioRecorder.loadWordStats()
