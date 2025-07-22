@@ -72,29 +72,99 @@ brew install ffmpeg
 
 ### Step 4: Add to Hammerspoon Configuration
 
+#### Basic Setup
+
 1. Open Hammerspoon and go to the menu bar → Hammerspoon → Open Config
 2. This will open your `~/.hammerspoon/init.lua` file
-3. Add this line to import the audio recorder (adjust the path to where you cloned the repository):
+3. Add this line to import the audio recorder:
 
 ```lua
-dofile("/path/to/your/cloned/wispr-go/init.lua")
+dofile(os.getenv("HOME") .. "/Code/wispr-go/init.lua")
 ```
 
-**Examples of common paths:**
-- If you cloned to your home directory: `dofile("~/wispr-go/init.lua")`
-- If you cloned to your Desktop: `dofile("~/Desktop/wispr-go/init.lua")`
-- If you cloned to a Code folder: `dofile("~/Code/wispr-go/init.lua")`
+#### Alternative Path Examples
 
-*Important: Replace the path with the actual location where you cloned the repository in Step 0.*
+**If you cloned to your home directory:**
+```lua
+dofile(os.getenv("HOME") .. "/wispr-go/init.lua")
+```
+
+**If you cloned to your Desktop:**
+```lua
+dofile(os.getenv("HOME") .. "/Desktop/wispr-go/init.lua")
+```
+
+**If you cloned to a Documents folder:**
+```lua
+dofile(os.getenv("HOME") .. "/Documents/wispr-go/init.lua")
+```
+
+**If you cloned to a specific path:**
+```lua
+dofile("/Users/yourusername/path/to/wispr-go/init.lua")
+```
+
+#### Advanced Configuration
+
+**Multiple Hammerspoon Modules:**
+```lua
+-- Load wispr-go audio recorder
+dofile(os.getenv("HOME") .. "/Code/wispr-go/init.lua")
+
+-- Load other Hammerspoon modules
+require("your-other-module")
+dofile(os.getenv("HOME") .. "/hammerspoon-configs/window-management.lua")
+```
+
+**Conditional Loading:**
+```lua
+-- Only load if the file exists
+local wispr_path = os.getenv("HOME") .. "/Code/wispr-go/init.lua"
+local file = io.open(wispr_path, "r")
+if file then
+    file:close()
+    dofile(wispr_path)
+    print("Wispr-go loaded successfully")
+else
+    print("Wispr-go not found at: " .. wispr_path)
+end
+```
+
+**Error Handling:**
+```lua
+-- Load with error protection
+local success, error_msg = pcall(function()
+    dofile(os.getenv("HOME") .. "/Code/wispr-go/init.lua")
+end)
+
+if not success then
+    hs.alert.show("Failed to load wispr-go: " .. tostring(error_msg), 3)
+    print("Error loading wispr-go:", error_msg)
+end
+```
+
+*The code examples above show different ways to integrate the wispr-go audio recorder into your Hammerspoon configuration, with proper error handling and path management options.*
 
 ### Step 5: Configure OpenAI API Key
 
 1. Get an OpenAI API key from [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 
-2. Add your API key to the `.env` file in the project directory:
+2. Create a `.env` file in the project directory:
 
-   Open the `.env` file in your cloned repository folder and replace the placeholder with your actual API key:
+   Navigate to your cloned repository folder and create the `.env` file:
 
+   ```bash
+   cd /path/to/your/wispr-go
+   touch .env
+   ```
+
+   Then add your API key to the `.env` file:
+
+   ```bash
+   echo "OPENAI_API_KEY=sk-your-actual-api-key-here" > .env
+   ```
+
+   **Or manually create the file:**
    ```
    OPENAI_API_KEY=sk-your-actual-api-key-here
    ```
